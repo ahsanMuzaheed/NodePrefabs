@@ -110,10 +110,13 @@ protected:
 	
 
 	/** Registers main menu and tool bar menu extensions. */
-	void RegisterMenuExtensions()
+	void RegisterInputHandling()
 	{
-		MenuExtensibilityManager = MakeShareable(new FExtensibilityManager);
-		ToolBarExtensibilityManager = MakeShareable(new FExtensibilityManager);
+		inputProcessor = MakeShareable(new FNodePrefabInputProcessor());
+		if (FSlateApplication::IsInitialized())
+		{
+		FSlateApplication::Get().RegisterInputPreProcessor(inputProcessor);
+		}
 	}
 
 	/** Unregisters main menu and tool bar menu extensions. */
