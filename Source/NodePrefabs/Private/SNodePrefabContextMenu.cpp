@@ -62,7 +62,7 @@ void SNodePrefabContextMenu::Construct(const FArguments& InArgs, FPointerEvent i
 		scrollBox->AddSlot()
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(FString(TEXT("No GraphNodePrefab Assets created for this graph type."))))
+				.Text(FText::FromString(FString(TEXT("No NodePrefab Assets created for this graph type."))))
 			];
 	}
 
