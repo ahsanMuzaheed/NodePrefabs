@@ -16,14 +16,25 @@ class NODEPREFABS_API UNodePrefab : public UObject
 {
 	GENERATED_BODY()
 public:
+
+	// (Optional) Display name in the context menu. If not set, the asset name is taken
 	UPROPERTY(EditDefaultsOnly)
 	FString displayName;
+
+	// (Optional) Category for the context menu, separated by '|'. E.g.: Default|Debug|Print
+	UPROPERTY(EditDefaultsOnly)
+	FString category;
 
 	UPROPERTY(EditDefaultsOnly)
 	FLinearColor color = FLinearColor::Transparent;
 
 	UPROPERTY()
 	FString prefab;
+
+	FString GetListName()
+	{
+		return displayName.IsEmpty() ? GetName() : displayName;
+	}
 
 
 	virtual bool IsEditorOnly() const override

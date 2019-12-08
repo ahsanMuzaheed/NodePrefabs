@@ -32,34 +32,58 @@ void SNodePrefabContextMenu::Construct(const FArguments& InArgs, FPointerEvent i
 		.BorderImage(FEditorStyle::GetBrush("Menu.Background"))
 		.Padding(5)
 		[
-			SNew(SBox)
-			.MaxDesiredHeight(350)
+			SAssignNew(verticalBox, SVerticalBox)
+			+ SVerticalBox::Slot()
+		.VAlign(VAlign_Top)
+		.AutoHeight()
 		[
-			SAssignNew(scrollBox, SScrollBox)
+			SNew(SBorder)
+			.BorderImage(FEditorStyle::GetBrush("Menu.Background"))
+		.Padding(5)
+		[
+			SNew(STextBlock)
+			.Justification(ETextJustify::Center)
+		.Text(FText::FromString(TEXT("NodePrefabs")))
+		]
 		]
 		]
 	);
 
-	scrollBox->SetScrollBarRightClickDragAllowed(true);
+	//scrollBox->SetScrollBarRightClickDragAllowed(true);
 
 	graphEditor = inGraphEditor;
 	mouseEvent = inMouseEvent;
 
+	// Build TreeStructure
+	treeRoot = MakeShareable(new FTreeNode(TEXT("")));
+
 	FNodePrefabLibrary::GetNodePrefabsForGraph(graphEditor, nodePrefabsFiltered);
+	for (UNodePrefab* prefab : nodePrefabsFiltered)
+	{
+		treeRoot->AddPrefab_RootOnly(prefab);
+	}
+	treeRoot->SortTree_RootOnly();
+
 	if (nodePrefabsFiltered.Num() > 0)
 	{
-		scrollBox->AddSlot()
+		verticalBox->AddSlot()
 			[
-				SNew(SListView<UNodePrefab*>)
-				.ItemHeight(24)
-			.ListItemsSource(&nodePrefabsFiltered)
-			.OnGenerateRow_Raw(this, &SNodePrefabContextMenu::OnGenerateListRow)
+				SNew(SBox)
+				.MaxDesiredHeight(450)
+			[
+				
+					SNew(STreeView<TreeType>)
+					.ItemHeight(24)
+			.TreeItemsSource(&(treeRoot->children))
+			.OnGenerateRow_Raw(this, &SNodePrefabContextMenu::OnTreeViewGenerateRow)
+			.OnGetChildren_Raw(this, &SNodePrefabContextMenu::OnTreeViewGetChildren)
+				
+			]
 			];
 	}
-
-	if (scrollBox->GetChildren()->Num() == 0)
+	else
 	{
-		scrollBox->AddSlot()
+		verticalBox->AddSlot()
 			[
 				SNew(STextBlock)
 				.Text(FText::FromString(FString(TEXT("No NodePrefab Assets created for this graph type."))))
@@ -80,15 +104,12 @@ FString SNodePrefabContextMenu::GetReferencerName() const
 
 FReply SNodePrefabContextMenu::OnPrefabButtonClicked(UNodePrefab* prefab)
 {
-
-	TSharedPtr<SGraphEditorImpl> graphEditorPinned;
 	if (graphEditor.IsValid())
 	{
-		graphEditorPinned = graphEditor.Pin();
-		UBlueprint* blueprint = FBlueprintEditorUtils::FindBlueprintForGraph(graphEditorPinned->GetCurrentGraph());
+		TSharedPtr<SGraphEditorImpl> graphEditorPinned = graphEditor.Pin();
 		FSlateRect previousSelectionBounds;
-		const bool bBoundsValid = FKismetEditorUtilities::GetBoundsForSelectedNodes(blueprint, previousSelectionBounds, 50.0f);
-	
+		const bool bBoundsValid = graphEditorPinned->GetBoundsForSelectedNodes(previousSelectionBounds, 50.0f);
+
 		prefab->PasteIntoGraph(graphEditorPinned);
 
 		// The editor auto selects pasted nodes.
@@ -106,62 +127,137 @@ FReply SNodePrefabContextMenu::OnPrefabButtonClicked(UNodePrefab* prefab)
 				commentNode->ResizeNode(previousSelectionBounds.GetSize());
 			}
 		}
-
 	}
 
 	FSlateApplication::Get().DismissMenuByWidget(AsShared()); // hack as the context menu is not closing directly
 	return FReply::Handled();
 }
 
-TSharedRef<ITableRow> SNodePrefabContextMenu::OnGenerateListRow(UNodePrefab* item, const TSharedRef<STableViewBase>& OwnerTable)
+TSharedRef<ITableRow> SNodePrefabContextMenu::OnTreeViewGenerateRow(TreeType item, const TSharedRef<STableViewBase>& OwnerTable)
 {
-	return SNew(STableRow<UNodePrefab*>, OwnerTable)
-		.ShowSelection(false)
-		.Content()
-		[
+	TSharedPtr<STableRow<TreeType>> row;
+	SAssignNew(row, STableRow<TreeType>, OwnerTable)
+		.ShowSelection(false);
+
+	if (item->prefab)
+	{
+		// Create TableRow for the prefab
+		row->SetContent(
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-		.AutoWidth()
-		[
 			// Color indicator
-			SNew(SBox)
-			.WidthOverride(9)
-		[
-			SNew(SBorder)
-			.BorderImage(FEditorStyle::GetBrush("AssetThumbnail.Border"))
-		.BorderBackgroundColor(item->color)
-		]
-		]
-	+ SHorizontalBox::Slot()
-		.FillWidth(1.f)
-		[
-			// Button to paste NodePrefab
-			SNew(SButton)
-			.ButtonColorAndOpacity(FLinearColor::Transparent)
-		.OnClicked(this, &SNodePrefabContextMenu::OnPrefabButtonClicked, item)
-		[
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			[
+				SNew(SBox)
+				.WidthOverride(9)
+			[
+				SNew(SBorder)
+				.BorderImage(FEditorStyle::GetBrush("AssetThumbnail.Border"))
+			.BorderBackgroundColor(item->prefab->color)
+			]
+			]
+		// Button to paste NodePrefab
+		+ SHorizontalBox::Slot()
+			.FillWidth(1.f)
+			[
+				SNew(SButton)
+				.ButtonColorAndOpacity(FLinearColor(0.14902f, 0.14902f, 0.14902f, 1.f))
+			.OnClicked(this, &SNodePrefabContextMenu::OnPrefabButtonClicked, item->prefab)
+			[
+				SNew(STextBlock)
+				.ColorAndOpacity(FEditorStyle::GetColor("ForegroundColor"))
+			//.Font(FEditorStyle::GetFontStyle("FontAwesome.14"))
+			.Text(FText::FromString(item->prefab->GetListName()))
+			]
+			]
+		// Button for editing the NodePrefab
+		+ SHorizontalBox::Slot()
+			.AutoWidth()
+			[
+				SNew(SButton)
+				.ButtonColorAndOpacity(FLinearColor(0.14902f, 0.14902f, 0.14902f, 1.f))
+			.ToolTipText(NSLOCTEXT("NodePrefabs", "NodePrefabs.ContextWidget.EditButton.Tooltip", "Open the NodePrefab to Edit"))
+			.OnClicked_Lambda([item]() {
+			FAssetEditorManager::Get().OpenEditorForAsset(item->prefab);
+			return FReply::Handled();
+		})
+			[
+				SNew(SImage)
+				.Image(FEditorStyle::GetBrush("ToolBar.Icon"))
+			]
+			]
+		);
+	}
+	else
+	{
+		FSlateFontInfo categoryFont = FCoreStyle::Get().GetFontStyle("NormalText");
+		categoryFont.Size = 11;
+
+		// Create TableRow for category
+		row->SetContent(
 			SNew(STextBlock)
-			.ColorAndOpacity(FEditorStyle::GetColor("ForegroundColor"))
-		//.Font(FEditorStyle::GetFontStyle("FontAwesome.14"))
-		.Text(FText::FromString(item->displayName.IsEmpty() ? item->GetName() : item->displayName))
-		]
-		]
-	+ SHorizontalBox::Slot()
-		.AutoWidth()
-		[
-			// Button for editing the NodePrefab
-			SNew(SButton)
-			.ButtonColorAndOpacity(FLinearColor::Transparent)
-		.ToolTipText(NSLOCTEXT("NodePrefabs", "NodePrefabs.ContextWidget.EditButton.Tooltip", "Open the NodePrefab to Edit"))
-		.OnClicked_Lambda([item]() {
-		FAssetEditorManager::Get().OpenEditorForAsset(item);
-		return FReply::Handled();
-	})
-		[
-			SNew(SImage)
-			.Image(FEditorStyle::GetBrush("ToolBar.Icon"))
-		]
-		]
-		];
+			.Text(FText::FromString(item->name))
+			.Font(categoryFont)
+		);
+	}
+
+	return row.ToSharedRef();
 }
 
+void SNodePrefabContextMenu::FTreeNode::AddPrefab_RootOnly(UNodePrefab* inPrefab)
+{
+	if (!inPrefab) return;
+
+	TArray<FString> categories;
+	if (!inPrefab->category.IsEmpty())
+	{
+		inPrefab->category.ParseIntoArray(categories, TEXT("|"));
+	}
+
+	TSharedPtr<FTreeNode> currentNode = AsShared();
+	for (const FString& category : categories)
+	{
+		TSharedPtr<FTreeNode>* found = currentNode->children.FindByPredicate([&category](const TSharedPtr<FTreeNode>& child) {
+			return child->name == category;
+		}
+		);
+
+		if (found)
+		{
+			currentNode = *found;
+		}
+		else
+		{
+			currentNode = currentNode->children.Add_GetRef(MakeShareable(new FTreeNode(category)));
+		}
+	}
+
+	currentNode->children.Add(MakeShareable(new FTreeNode(inPrefab)));
+}
+
+void SNodePrefabContextMenu::FTreeNode::SortTree_RootOnly()
+{
+	children.Sort([](const TSharedPtr<FTreeNode>& a, const TSharedPtr<FTreeNode>& b) {
+		if (a->prefab && b->prefab)
+		{
+			return a->prefab->GetListName() < b->prefab->GetListName();
+		}
+
+		// Keep all prefabs below the categories
+		if (a->prefab)
+		{
+			return false;
+		}
+		else if (b->prefab)
+		{
+			return true;
+		}
+		
+		return a->name < b->name;
+	});
+
+	for (TSharedPtr<FTreeNode> child : children)
+	{
+		child->SortTree_RootOnly();
+	}
+}

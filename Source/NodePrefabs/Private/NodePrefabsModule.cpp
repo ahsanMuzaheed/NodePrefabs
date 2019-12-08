@@ -11,10 +11,10 @@
 #define LOCTEXT_NAMESPACE "FNodePrefabsModule"
 
 
-class FNodePrefabsModule : 
+class FNodePrefabsModule :
 	public IModuleInterface
-	, public IHasMenuExtensibility
-	, public IHasToolBarExtensibility
+	//, public IHasMenuExtensibility
+	//, public IHasToolBarExtensibility
 {
 public:
 
@@ -22,37 +22,35 @@ public:
 	virtual void StartupModule() override
 	{
 		RegisterAssetTools();
-		RegisterMenuExtensions();
 		RegisterInputHandling();
-
 	}
 
 
 	virtual void ShutdownModule() override
 	{
 		UnregisterAssetTools();
-		UnregisterMenuExtensions();
-		unregisterInputHandling();
-	}	
+		//UnregisterMenuExtensions();
+		UnregisterInputHandling();
+	}
 
 	//virtual bool SupportsDynamicReloading() override
 	//{
 	//	return true;
 	//}
 	//~ IModuleInterface interface
-	
-	//~ IHasMenuExtensibility interface
-	virtual TSharedPtr<FExtensibilityManager> GetMenuExtensibilityManager() override
-	{
-		return MenuExtensibilityManager;
-	}
-	//~ IHasMenuExtensibility interface
 
-	//~ IHasToolBarExtensibility interface
-	virtual TSharedPtr<FExtensibilityManager> GetToolBarExtensibilityManager() override
-	{
-		return ToolBarExtensibilityManager;
-	}
+	//~ IHasMenuExtensibility interface
+	//virtual TSharedPtr<FExtensibilityManager> GetMenuExtensibilityManager() override
+	//{
+	//	return MenuExtensibilityManager;
+	//}
+	////~ IHasMenuExtensibility interface
+
+	////~ IHasToolBarExtensibility interface
+	//virtual TSharedPtr<FExtensibilityManager> GetToolBarExtensibilityManager() override
+	//{
+	//	return ToolBarExtensibilityManager;
+	//}
 	//~ IHasToolBarExtensibility interface
 
 protected:
@@ -96,10 +94,13 @@ protected:
 	void RegisterInputHandling()
 	{
 		inputProcessor = MakeShareable(new FNodePrefabInputProcessor());
-		FSlateApplication::Get().RegisterInputPreProcessor(inputProcessor);
+		if (FSlateApplication::IsInitialized())
+		{
+			FSlateApplication::Get().RegisterInputPreProcessor(inputProcessor);
+		}
 	}
 
-	void unregisterInputHandling()
+	void UnregisterInputHandling()
 	{
 		if (FSlateApplication::IsInitialized())
 		{
@@ -107,39 +108,27 @@ protected:
 		}
 	}
 
-	
-
-	/** Registers main menu and tool bar menu extensions. */
-	void RegisterInputHandling()
-	{
-		inputProcessor = MakeShareable(new FNodePrefabInputProcessor());
-		if (FSlateApplication::IsInitialized())
-		{
-		FSlateApplication::Get().RegisterInputPreProcessor(inputProcessor);
-		}
-	}
-
-	/** Unregisters main menu and tool bar menu extensions. */
-	void UnregisterMenuExtensions()
-	{
-		MenuExtensibilityManager.Reset();
-		ToolBarExtensibilityManager.Reset();
-	}
+	///** Unregisters main menu and tool bar menu extensions. */
+	//void UnregisterMenuExtensions()
+	//{
+	//	MenuExtensibilityManager.Reset();
+	//	ToolBarExtensibilityManager.Reset();
+	//}
 
 private:
 	/** The collection of registered asset type actions. */
 	TArray<TSharedRef<IAssetTypeActions>> RegisteredAssetTypeActions;
 
-	// Note: These seem to be needed to populate the ToolkitWindows with content
-	// when opened. No clue why.
-	/** Holds the tool bar extensibility manager. */
-	TSharedPtr<FExtensibilityManager> ToolBarExtensibilityManager;
-	/** Holds the menu extensibility manager. */
-	TSharedPtr<FExtensibilityManager> MenuExtensibilityManager;
+	//// Note: These seem to be needed to populate the ToolkitWindows with content
+	//// when opened. No clue why.
+	///** Holds the tool bar extensibility manager. */
+	//TSharedPtr<FExtensibilityManager> ToolBarExtensibilityManager;
+	///** Holds the menu extensibility manager. */
+	//TSharedPtr<FExtensibilityManager> MenuExtensibilityManager;
 
 	TSharedPtr<FNodePrefabInputProcessor> inputProcessor;
 };
 
 #undef LOCTEXT_NAMESPACE
-	
+
 IMPLEMENT_MODULE(FNodePrefabsModule, NodePrefabs)
