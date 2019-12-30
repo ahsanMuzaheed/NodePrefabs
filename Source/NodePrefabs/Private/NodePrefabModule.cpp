@@ -7,20 +7,21 @@
 #include "Windows/WindowsApplication.h"
 #include "Framework/Application/SlateApplication.h"
 #include "NodePrefabInputProcessor.h"
+#include "ISettingsModule.h"
+#include "NodePrefabSettings.h"
 
 #define LOCTEXT_NAMESPACE "FNodePrefabsModule"
 
 
 class FNodePrefabsModule :
 	public IModuleInterface
-	//, public IHasMenuExtensibility
-	//, public IHasToolBarExtensibility
 {
 public:
 
 	//~ IModuleInterface interface
 	virtual void StartupModule() override
 	{
+		RegisterEditorSettings();
 		RegisterAssetTools();
 		RegisterInputHandling();
 	}
@@ -28,30 +29,16 @@ public:
 
 	virtual void ShutdownModule() override
 	{
+		UnregisterEditorSettings();
 		UnregisterAssetTools();
-		//UnregisterMenuExtensions();
 		UnregisterInputHandling();
 	}
 
-	//virtual bool SupportsDynamicReloading() override
-	//{
-	//	return true;
-	//}
+	virtual bool SupportsDynamicReloading() override
+	{
+		return true;
+	}
 	//~ IModuleInterface interface
-
-	//~ IHasMenuExtensibility interface
-	//virtual TSharedPtr<FExtensibilityManager> GetMenuExtensibilityManager() override
-	//{
-	//	return MenuExtensibilityManager;
-	//}
-	////~ IHasMenuExtensibility interface
-
-	////~ IHasToolBarExtensibility interface
-	//virtual TSharedPtr<FExtensibilityManager> GetToolBarExtensibilityManager() override
-	//{
-	//	return ToolBarExtensibilityManager;
-	//}
-	//~ IHasToolBarExtensibility interface
 
 protected:
 
@@ -108,23 +95,37 @@ protected:
 		}
 	}
 
-	///** Unregisters main menu and tool bar menu extensions. */
-	//void UnregisterMenuExtensions()
-	//{
-	//	MenuExtensibilityManager.Reset();
-	//	ToolBarExtensibilityManager.Reset();
-	//}
+	void RegisterEditorSettings()
+	{
+		// Registering some settings is just a matter of exposing the default UObject of
+		// your desired class, feel free to add here all those settings you want to expose
+		// to your LDs or artists.
+
+		if (ISettingsModule* settingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings"))
+		{
+			UNodePrefabSettings* settings = UNodePrefabSettings::Get();
+
+			// Register the settings
+			settingsModule->RegisterSettings(settings->GetContainerName(), settings->GetCategoryName(), settings->GetSectionName(),
+				NSLOCTEXT("NodePrefabs", "NodePrefab.Settings.Name", "NodePrefabs"),
+				NSLOCTEXT("NodePrefabs", "NodePrefab.Settings.Description", "Settings for NodePrefab Assets and the corresponding Graph Menu"),
+				settings
+			);
+		}
+	}
+
+	void UnregisterEditorSettings()
+	{
+		if (ISettingsModule* settingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings"))
+		{
+			settingsModule->UnregisterSettings(UNodePrefabSettings::GetContainerName(), UNodePrefabSettings::GetCategoryName(), UNodePrefabSettings::GetSectionName());
+		}
+	}
+
 
 private:
 	/** The collection of registered asset type actions. */
 	TArray<TSharedRef<IAssetTypeActions>> RegisteredAssetTypeActions;
-
-	//// Note: These seem to be needed to populate the ToolkitWindows with content
-	//// when opened. No clue why.
-	///** Holds the tool bar extensibility manager. */
-	//TSharedPtr<FExtensibilityManager> ToolBarExtensibilityManager;
-	///** Holds the menu extensibility manager. */
-	//TSharedPtr<FExtensibilityManager> MenuExtensibilityManager;
 
 	TSharedPtr<FNodePrefabInputProcessor> inputProcessor;
 };

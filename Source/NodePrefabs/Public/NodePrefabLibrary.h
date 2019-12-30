@@ -28,5 +28,10 @@ public:
 	static void GetNodePrefabsForGraph(TWeakPtr<SGraphEditorImpl> graph, TArray<UNodePrefab*>& outPrefabs);
 	static void GetNodePrefabsForGraph(TWeakPtr<SGraphEditorImpl> graph, TArray<TStrongObjectPtr<UNodePrefab>>& outPrefabs);
 	
+	/**
+	 * Evaluates if we shall include the given asset depending on the settings.
+	 */
+	static bool ShallIncludeNodePrefab(const FAssetData& asset);
+
 	static TSharedPtr<SWidget> FindChildWidgetRecursive(FChildren* children, const FName& widgetType);
 };

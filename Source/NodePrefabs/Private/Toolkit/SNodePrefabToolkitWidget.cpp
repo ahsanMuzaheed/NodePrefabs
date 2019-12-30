@@ -38,10 +38,18 @@ void SNodePrefabsToolkitWidget::Construct(const FArguments& inArgs, UNodePrefab*
 		[
 			detailsView
 		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(0.f, 10.f, 0.f, 0.f)
+		[
+			SNew(STextBlock)
+			.Text(NSLOCTEXT("NodePrefabs", "ToolkitWidget.ClipboardText", "Node construct clipboard data"))
+		]
 	+ SVerticalBox::Slot()
 		.FillHeight(1.0f)
 		[
 			SAssignNew(editableTextBox, SMultiLineEditableTextBox)
+			.HintText(NSLOCTEXT("NodePrefabs", "ToolkitWidget.ClipboardHint", "Paste the clipboard data of your node construct here"))
 			.OnTextChanged(this, &SNodePrefabsToolkitWidget::HandleEditableTextBoxTextChanged)
 		.OnTextCommitted(this, &SNodePrefabsToolkitWidget::HandleEditableTextBoxTextCommitted)
 		.Text(FText::FromString(prefab->prefab))

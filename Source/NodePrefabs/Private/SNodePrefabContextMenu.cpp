@@ -12,7 +12,10 @@
 #include "AssetEditorManager.h"
 #include "EdGraphNode_Comment.h"
 #include "KismetEditorUtilities.h"
+#include "Private/Menus/SettingsMenu.h"
+#include "NodePrefabSettings.h"
 
+FLinearColor buttonColor = FLinearColor(0.14902f, 0.14902f, 0.14902f, 1.f);
 
 void SNodePrefabContextMenu::SpawnPrefab(const FAssetData& assetData)
 {
@@ -21,12 +24,14 @@ void SNodePrefabContextMenu::SpawnPrefab(const FAssetData& assetData)
 	TSharedPtr<SGraphEditorImpl> graphEditorPinned = graphEditor.Pin();
 	if (nodePrefab && graphEditorPinned.IsValid())
 	{
-		nodePrefab->PasteIntoGraph(graphEditorPinned);//, mouseEvent.GetScreenSpacePosition());
+		nodePrefab->PasteIntoGraph(graphEditorPinned);
 	}
 }
 
 void SNodePrefabContextMenu::Construct(const FArguments& InArgs, FPointerEvent inMouseEvent, TWeakPtr<SGraphEditorImpl> inGraphEditor)
 {
+	FSlateFontInfo titleFont = FCoreStyle::GetDefaultFontStyle("Bold", 12);
+
 	// Build the widget layout
 	SBorder::Construct(SBorder::FArguments()
 		.BorderImage(FEditorStyle::GetBrush("Menu.Background"))
@@ -41,9 +46,33 @@ void SNodePrefabContextMenu::Construct(const FArguments& InArgs, FPointerEvent i
 			.BorderImage(FEditorStyle::GetBrush("Menu.Background"))
 		.Padding(5)
 		[
+			SNew(SHorizontalBox)
+			+SHorizontalBox::Slot()
+		.FillWidth(1.0)
+		.HAlign(HAlign_Fill)
+		[
 			SNew(STextBlock)
 			.Justification(ETextJustify::Center)
 		.Text(FText::FromString(TEXT("NodePrefabs")))
+		.Font(titleFont)
+		]
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Right)
+		.Padding(5.f, 0.f, 0.f, 0.f)
+		[
+			SNew(SButton)
+			.ButtonColorAndOpacity(buttonColor)
+			.OnClicked_Lambda([]() {
+		UNodePrefabSettings* settings = UNodePrefabSettings::Get();
+		FSettingsMenu::OpenSettings(settings->GetContainerName(), settings->GetCategoryName(), settings->GetSectionName());
+		return FReply::Handled();
+	})
+		[
+			SNew(SImage)
+			.Image(FEditorStyle::GetBrush("ToolBar.Icon"))
+		]
+		]
 		]
 		]
 		]
@@ -86,7 +115,7 @@ void SNodePrefabContextMenu::Construct(const FArguments& InArgs, FPointerEvent i
 		verticalBox->AddSlot()
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(FString(TEXT("No NodePrefab Assets created for this graph type."))))
+				.Text(FText::FromString(FString(TEXT("No NodePrefab Assets created for this graph type\nor the include/exclude configuration is wrong."))))
 			];
 	}
 
@@ -161,7 +190,7 @@ TSharedRef<ITableRow> SNodePrefabContextMenu::OnTreeViewGenerateRow(TreeType ite
 			.FillWidth(1.f)
 			[
 				SNew(SButton)
-				.ButtonColorAndOpacity(FLinearColor(0.14902f, 0.14902f, 0.14902f, 1.f))
+				.ButtonColorAndOpacity(buttonColor)
 			.OnClicked(this, &SNodePrefabContextMenu::OnPrefabButtonClicked, item->prefab)
 			[
 				SNew(STextBlock)
@@ -175,7 +204,7 @@ TSharedRef<ITableRow> SNodePrefabContextMenu::OnTreeViewGenerateRow(TreeType ite
 			.AutoWidth()
 			[
 				SNew(SButton)
-				.ButtonColorAndOpacity(FLinearColor(0.14902f, 0.14902f, 0.14902f, 1.f))
+				.ButtonColorAndOpacity(buttonColor)
 			.ToolTipText(NSLOCTEXT("NodePrefabs", "NodePrefabs.ContextWidget.EditButton.Tooltip", "Open the NodePrefab to Edit"))
 			.OnClicked_Lambda([item]() {
 			FAssetEditorManager::Get().OpenEditorForAsset(item->prefab);

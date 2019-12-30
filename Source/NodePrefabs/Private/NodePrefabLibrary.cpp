@@ -15,6 +15,7 @@
 #include "AssetRegistryModule.h"
 #include "EdGraphUtilities.h"
 #include "StrongObjectPtr.h"
+#include "NodePrefabSettings.h"
 
 
 
@@ -72,6 +73,11 @@ void FNodePrefabLibrary::GetNodePrefabsForGraph(TWeakPtr<SGraphEditorImpl> graph
 
 		for (const FAssetData& data : assetData)
 		{
+			if (!ShallIncludeNodePrefab(data))
+			{
+				continue;
+			}
+
 			UNodePrefab* nodePrefab = Cast<UNodePrefab>(data.GetAsset());
 
 			// Only populate with Prefabs that can be used in the current editor.
@@ -92,6 +98,86 @@ void FNodePrefabLibrary::GetNodePrefabsForGraph(TWeakPtr<SGraphEditorImpl> graph
 	{
 		outPrefabs.Add(TStrongObjectPtr<UNodePrefab>(iter));
 	}
+}
+
+bool FNodePrefabLibrary::ShallIncludeNodePrefab(const FAssetData& asset)
+{
+	UNodePrefabSettings* settings = UNodePrefabSettings::Get();
+	FString path;
+	asset.GetPackage()->GetPathName().Split("/", &path, nullptr, ESearchCase::CaseSensitive, ESearchDir::FromEnd);
+	bool bIncludeAsset = false;
+
+	for (const FDirectoryPath& incPathRec : settings->PathToIncludeRecursive)
+	{
+		if (incPathRec.Path.IsEmpty())
+		{
+			continue;
+		}
+
+		if (path.StartsWith(incPathRec.Path, ESearchCase::CaseSensitive))
+		{
+			bIncludeAsset = true;
+			break;
+		}
+	}
+
+	if (!bIncludeAsset)
+	{
+		for (const FDirectoryPath& incPath : settings->PathToInclude)
+		{
+			if (incPath.Path.IsEmpty())
+			{
+				continue;
+			}
+
+			if (path.Equals(incPath.Path, ESearchCase::CaseSensitive))
+			{
+				bIncludeAsset = true;
+				break;
+			}
+		}
+	}
+	
+
+	if (!bIncludeAsset)
+	{
+		return false;
+	}
+
+	for (const FDirectoryPath& exPathRec : settings->PathToExcludeRecursive)
+	{
+		if (exPathRec.Path.IsEmpty())
+		{
+			continue;
+		}
+
+		if (path.StartsWith(exPathRec.Path, ESearchCase::CaseSensitive))
+		{
+			bIncludeAsset = false;
+			break;
+		}
+	}
+
+	if (!bIncludeAsset)
+	{
+		return false;
+	}
+
+	for (const FDirectoryPath& exPath : settings->PathToExclude)
+	{
+		if (exPath.Path.IsEmpty())
+		{
+			continue;
+		}
+
+		if (path.Equals(exPath.Path, ESearchCase::CaseSensitive))
+		{
+			bIncludeAsset = false;
+			break;
+		}
+	}
+
+	return bIncludeAsset;
 }
 
 TSharedPtr<SWidget> FNodePrefabLibrary::FindChildWidgetRecursive(FChildren* children, const FName& widgetType)
