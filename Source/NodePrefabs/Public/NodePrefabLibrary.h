@@ -2,10 +2,9 @@
 
 #pragma once
 
-#include "SharedPointer.h"
-#include "UnrealString.h"
-#include "NoExportTypes.h"
-#include "StrongObjectPtr.h"
+#include "Templates/SharedPointer.h"
+#include "Containers/UnrealString.h"
+#include "UObject/StrongObjectPtr.h"
 
 class SGraphEditorImpl;
 class FChildren;
@@ -18,15 +17,15 @@ public:
 	/**
 	 * Returns the GraphEditor under the mouse cursor if there is any.
 	 */
-	static TSharedPtr<SGraphEditorImpl> GetGraphEditorUnderMouse(const FVector2D CursorPos);
+	static TSharedPtr<SGraphEditor> GetGraphEditorUnderMouse(const FVector2D CursorPos);
 
 	/**
 	 * Tries to past the given string node representation into the given graph. Returns true when successful
 	 */
-	static bool PasteNodesIntoGraph(TSharedPtr<SGraphEditorImpl> graphEditor, const FString& nodesAsString);
+	static bool PasteNodesIntoGraph(TSharedPtr<SGraphEditor> graphEditor, const FString& nodesAsString);
 	
-	static void GetNodePrefabsForGraph(TWeakPtr<SGraphEditorImpl> graph, TArray<UNodePrefab*>& outPrefabs);
-	static void GetNodePrefabsForGraph(TWeakPtr<SGraphEditorImpl> graph, TArray<TStrongObjectPtr<UNodePrefab>>& outPrefabs);
+	static void GetNodePrefabsForGraph(TWeakPtr<SGraphEditor> graph, TArray<UNodePrefab*>& outPrefabs);
+	static void GetNodePrefabsForGraph(TWeakPtr<SGraphEditor> graph, TArray<TStrongObjectPtr<UNodePrefab>>& outPrefabs);
 	
 	/**
 	 * Evaluates if we shall include the given asset depending on the settings.

@@ -7,12 +7,10 @@
 #include "AssetData.h"
 #include "NodePrefab.h"
 #include "EdGraphUtilities.h"
-#include "Private/SGraphEditorImpl.h"
 #include "NodePrefabLibrary.h"
-#include "AssetEditorManager.h"
+#include "Toolkits/AssetEditorManager.h"
 #include "EdGraphNode_Comment.h"
-#include "KismetEditorUtilities.h"
-#include "Private/Menus/SettingsMenu.h"
+#include "Kismet2/KismetEditorUtilities.h"
 #include "NodePrefabSettings.h"
 
 FLinearColor buttonColor = FLinearColor(0.14902f, 0.14902f, 0.14902f, 1.f);
@@ -21,14 +19,14 @@ void SNodePrefabContextMenu::SpawnPrefab(const FAssetData& assetData)
 {
 	UNodePrefab* nodePrefab = Cast<UNodePrefab>(assetData.GetAsset());
 
-	TSharedPtr<SGraphEditorImpl> graphEditorPinned = graphEditor.Pin();
+	TSharedPtr<SGraphEditor> graphEditorPinned = graphEditor.Pin();
 	if (nodePrefab && graphEditorPinned.IsValid())
 	{
 		nodePrefab->PasteIntoGraph(graphEditorPinned);
 	}
 }
 
-void SNodePrefabContextMenu::Construct(const FArguments& InArgs, FPointerEvent inMouseEvent, TWeakPtr<SGraphEditorImpl> inGraphEditor)
+void SNodePrefabContextMenu::Construct(const FArguments& InArgs, FPointerEvent inMouseEvent, TWeakPtr<SGraphEditor> inGraphEditor)
 {
 	FSlateFontInfo titleFont = FCoreStyle::GetDefaultFontStyle("Bold", 12);
 
@@ -65,7 +63,8 @@ void SNodePrefabContextMenu::Construct(const FArguments& InArgs, FPointerEvent i
 			.ButtonColorAndOpacity(buttonColor)
 			.OnClicked_Lambda([]() {
 		UNodePrefabSettings* settings = UNodePrefabSettings::Get();
-		FSettingsMenu::OpenSettings(settings->GetContainerName(), settings->GetCategoryName(), settings->GetSectionName());
+		FModuleManager::LoadModuleChecked<ISettingsModule>("Settings").ShowViewer(settings->GetContainerName()
+			, settings->GetCategoryName(), settings->GetSectionName()); // Copied from FSettingsMenu::OpenSettings
 		return FReply::Handled();
 	})
 		[
@@ -135,7 +134,7 @@ FReply SNodePrefabContextMenu::OnPrefabButtonClicked(UNodePrefab* prefab)
 {
 	if (graphEditor.IsValid())
 	{
-		TSharedPtr<SGraphEditorImpl> graphEditorPinned = graphEditor.Pin();
+		TSharedPtr<SGraphEditor> graphEditorPinned = graphEditor.Pin();
 		FSlateRect previousSelectionBounds;
 		const bool bBoundsValid = graphEditorPinned->GetBoundsForSelectedNodes(previousSelectionBounds, 50.0f);
 

@@ -2,13 +2,12 @@
 
 
 #include "NodePrefabInputProcessor.h"
-#include "Events.h"
+#include "Input/Events.h"
 #include "NodePrefabLibrary.h"
-#include "Private/SGraphEditorImpl.h"
-#include "SlateApplication.h"
+#include "Framework/Application/SlateApplication.h"
 #include "SNodePrefabContextMenu.h"
 #include "NodePrefabActions.h"
-#include "UICommandList.h"
+#include "Framework/Commands/UICommandList.h"
 #include "SGraphPanel.h"
 
 bool FNodePrefabInputProcessor::HandleMouseButtonUpEvent(FSlateApplication& SlateApp, const FPointerEvent& MouseEvent)
@@ -22,12 +21,13 @@ bool FNodePrefabInputProcessor::HandleMouseButtonUpEvent(FSlateApplication& Slat
 		)
 	{
 		// Check if the mouse is above a SNodePanel
-		TSharedPtr<SGraphEditorImpl> graphEditor = FNodePrefabLibrary::GetGraphEditorUnderMouse(MouseEvent.GetScreenSpacePosition());
+		TSharedPtr<SGraphEditor> graphEditor = FNodePrefabLibrary::GetGraphEditorUnderMouse(MouseEvent.GetScreenSpacePosition());
+
 		if (!graphEditor.IsValid())
 		{
 			return false;
 		}
-		TSharedPtr<SWidget> graphPanelUncasted = FNodePrefabLibrary::FindChildWidgetRecursive(graphEditor->GetChildren(), FName("SGraphPanel"));
+		TSharedPtr<SWidget> graphPanelUncasted = FNodePrefabLibrary::FindChildWidgetRecursive(StaticCastSharedPtr<SCompoundWidget>(graphEditor)->GetChildren(), FName("SGraphPanel"));
 		if (!graphPanelUncasted.IsValid())
 		{
 			return false;

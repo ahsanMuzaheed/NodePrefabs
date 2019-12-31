@@ -1,10 +1,10 @@
 // Copyright 2019 Guenther Schrenk (Rumbleball)
 
-#include "NodePrefabToolkit.h"
+#include "Toolkit/NodePrefabToolkit.h"
 #include "CoreMinimal.h"
 #include "NodePrefab.h"
 #include "Toolkit/SNodePrefabToolkitWidget.h"
-#include "SDockTab.h"
+#include "Widgets/Docking/SDockTab.h"
 #include "EditorStyleSet.h"
 
 

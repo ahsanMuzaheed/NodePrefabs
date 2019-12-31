@@ -18,14 +18,14 @@ class NODEPREFABS_API UNodePrefab : public UObject
 public:
 
 	// (Optional) Display name in the context menu. If not set, the asset name is taken
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, Category = "Default")
 	FString displayName;
 
 	// (Optional) Category for the context menu, separated by '|'. E.g.: Default|Debug|Print
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, Category = "Default")
 	FString category;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, Category = "Default")
 	FLinearColor color = FLinearColor::Transparent;
 
 	UPROPERTY()
@@ -42,5 +42,5 @@ public:
 		return true;
 	}
 
-	bool PasteIntoGraph(TSharedPtr<SGraphEditorImpl> graphEditor);
+	bool PasteIntoGraph(TSharedPtr<SGraphEditor> graphEditor);
 };

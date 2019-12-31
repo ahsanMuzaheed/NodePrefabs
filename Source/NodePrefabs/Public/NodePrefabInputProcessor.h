@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IInputProcessor.h"
+#include "Framework\Application\IInputProcessor.h"
 
 /**
  * Input handler for NodePrefabs

@@ -4,7 +4,7 @@
 #include "NodePrefab.h"
 #include "NodePrefabLibrary.h"
 
-bool UNodePrefab::PasteIntoGraph(TSharedPtr<SGraphEditorImpl> graphEditor)
+bool UNodePrefab::PasteIntoGraph(TSharedPtr<SGraphEditor> graphEditor)
 {
 	return FNodePrefabLibrary::PasteNodesIntoGraph(graphEditor, prefab);
 }

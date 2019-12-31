@@ -1,25 +1,25 @@
 // Copyright 2019 Guenther Schrenk (Rumbleball)
 
 #include "NodePrefabLibrary.h"
-#include "SlateApplication.h"
-#include "WidgetPath.h"
-#include "WindowsPlatformApplicationMisc.h"
-#include "AssetEditorManager.h"
-#include "BlueprintEditorUtils.h"
-#include "Private/SGraphEditorImpl.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Layout/WidgetPath.h"
+#include "Windows/WindowsPlatformApplicationMisc.h"
+#include "Toolkits/AssetEditorManager.h"
+#include "Kismet2/BlueprintEditorUtils.h"
+//#include "Private/SGraphEditorImpl.h"
 #include "BlueprintEditorModule.h"
-#include "SharedPointer.h"
+#include "Templates/SharedPointer.h"
 #include "SGraphPanel.h"
 #include "NodePrefab.h"
-#include "ModuleManager.h"
+#include "Modules/ModuleManager.h"
 #include "AssetRegistryModule.h"
 #include "EdGraphUtilities.h"
-#include "StrongObjectPtr.h"
+#include "UObject/StrongObjectPtr.h"
 #include "NodePrefabSettings.h"
 
 
 
-TSharedPtr<SGraphEditorImpl> FNodePrefabLibrary::GetGraphEditorUnderMouse(const FVector2D CursorPos)
+TSharedPtr<SGraphEditor> FNodePrefabLibrary::GetGraphEditorUnderMouse(const FVector2D CursorPos)
 {
 	FSlateApplication& slateApp = FSlateApplication::Get();
 	FWidgetPath widgetPath = slateApp.LocateWindowUnderMouse(CursorPos, slateApp.GetInteractiveTopLevelWindows());
@@ -31,14 +31,14 @@ TSharedPtr<SGraphEditorImpl> FNodePrefabLibrary::GetGraphEditorUnderMouse(const 
 	{
 		if (widget.Widget->GetType() == graphEdtiorImplName)
 		{
-			TSharedRef<SGraphEditorImpl> graphEditor = StaticCastSharedRef<SGraphEditorImpl>(widget.Widget);
-			return TSharedPtr<SGraphEditorImpl>(graphEditor);
+			TSharedRef<SGraphEditor> graphEditor = StaticCastSharedRef<SGraphEditor>(widget.Widget);
+			return TSharedPtr<SGraphEditor>(graphEditor);
 		}
 	}
-	return TSharedPtr<SGraphEditorImpl>(nullptr);
+	return TSharedPtr<SGraphEditor>(nullptr);
 }
 
-bool FNodePrefabLibrary::PasteNodesIntoGraph(TSharedPtr<SGraphEditorImpl> graphEditor, const FString& nodesAsString)
+bool FNodePrefabLibrary::PasteNodesIntoGraph(TSharedPtr<SGraphEditor> graphEditor, const FString& nodesAsString)
 {
 	if (graphEditor.IsValid() && graphEditor->GetCurrentGraph())
 	{
@@ -62,9 +62,9 @@ bool FNodePrefabLibrary::PasteNodesIntoGraph(TSharedPtr<SGraphEditorImpl> graphE
 	return false;
 }
 
-void FNodePrefabLibrary::GetNodePrefabsForGraph(TWeakPtr<SGraphEditorImpl> graph, TArray<UNodePrefab*>& outPrefabs)
+void FNodePrefabLibrary::GetNodePrefabsForGraph(TWeakPtr<SGraphEditor> graph, TArray<UNodePrefab*>& outPrefabs)
 {
-	TSharedPtr<SGraphEditorImpl> graphPinned = graph.Pin();
+	TSharedPtr<SGraphEditor> graphPinned = graph.Pin();
 	if (graphPinned.IsValid())
 	{
 		TArray<FAssetData> assetData;
@@ -89,7 +89,7 @@ void FNodePrefabLibrary::GetNodePrefabsForGraph(TWeakPtr<SGraphEditorImpl> graph
 	}
 }
 
-void FNodePrefabLibrary::GetNodePrefabsForGraph(TWeakPtr<SGraphEditorImpl> graph, TArray<TStrongObjectPtr<UNodePrefab>>& outPrefabs)
+void FNodePrefabLibrary::GetNodePrefabsForGraph(TWeakPtr<SGraphEditor> graph, TArray<TStrongObjectPtr<UNodePrefab>>& outPrefabs)
 {
 	TArray<UNodePrefab*> prefabs;
 	GetNodePrefabsForGraph(graph, prefabs);

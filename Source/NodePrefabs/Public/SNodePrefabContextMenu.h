@@ -39,7 +39,7 @@ public:
 	{}
 	SLATE_END_ARGS()
 
-		void Construct(const FArguments& InArgs, FPointerEvent inMouseEvent, TWeakPtr<SGraphEditorImpl> inGraphEditor);
+		void Construct(const FArguments& InArgs, FPointerEvent inMouseEvent, TWeakPtr<SGraphEditor> inGraphEditor);
 
 	//~ Begin FGCObject Interface
 	virtual void AddReferencedObjects(FReferenceCollector& Collector);
@@ -65,5 +65,5 @@ private:
 	TArray<UNodePrefab*> nodePrefabsFiltered;
 	TSharedPtr<SVerticalBox> verticalBox;
 	FPointerEvent mouseEvent;
-	TWeakPtr<SGraphEditorImpl> graphEditor;
+	TWeakPtr<SGraphEditor> graphEditor;
 };

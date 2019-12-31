@@ -1,11 +1,10 @@
 // Copyright 2019 Guenther Schrenk (Rumbleball)
 
 
-#include "SNodePrefabToolkitWidget.h"
+#include "Toolkit/SNodePrefabToolkitWidget.h"
 #include "NodePrefab.h"
-#include "SMultiLineEditableTextBox.h"
-#include "Private/SDetailsView.h"
-#include "ModuleManager.h"
+#include "Widgets/Input/SMultiLineEditableTextBox.h"
+#include "Modules/ModuleManager.h"
 #include "PropertyEditorModule.h"
 
 SNodePrefabsToolkitWidget::~SNodePrefabsToolkitWidget()

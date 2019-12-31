@@ -1,17 +1,21 @@
 // Copyright 2019 Guenther Schrenk (Rumbleball)
 
 using UnrealBuildTool;
+using System.IO;
 
 public class NodePrefabs : ModuleRules
 {
 	public NodePrefabs(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicIncludePaths.AddRange(
+
+  
+        PublicIncludePaths.AddRange(
 			new string[] {
 				// ... add public include paths required here ...
-			}
+                 Path.Combine(EngineDirectory, "Source/Editor"),
+                 Path.Combine(EngineDirectory, "Source/Runtime/Slate/Public"),
+            }
 			);
 				
 		
