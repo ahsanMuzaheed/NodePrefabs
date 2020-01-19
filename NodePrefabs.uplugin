@@ -9,18 +9,17 @@
   "CreatedBy": "Guenther Schrenk (Rumbleball)",
   "CreatedByURL": "",
   "MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/c39914c9faab4fbeb1a3e2cd07dcea16",
-  "DocsURL": "",
-  "MarketplaceURL": "",
-  "SupportURL": "",
+  "DocsURL": "https://forums.unrealengine.com/unreal-engine/marketplace/1703151-nodeprefabs-fast-access-to-common-node-configuration-and-heavily-used-nodes",
+  "SupportURL": "https://forums.unrealengine.com/unreal-engine/marketplace/1703151-nodeprefabs-fast-access-to-common-node-configuration-and-heavily-used-nodes",
   "CanContainContent": true,
   "IsBetaVersion": false,
   "Installed": false,
-  "WhitelistPlatforms": [ "Win64", "Win32" ],
   "Modules": [
     {
       "Name": "NodePrefabs",
       "Type": "Editor",
-      "LoadingPhase": "Default"
+      "LoadingPhase": "Default",
+      "WhitelistPlatforms": [ "Win64", "Win32" ]
     }
   ]
 }

@@ -26,7 +26,7 @@ public:
 	FString category;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Default")
-	FLinearColor color = FLinearColor::Transparent;
+	FLinearColor color = FLinearColor::White;
 
 	UPROPERTY()
 	FString prefab;
