@@ -77,14 +77,17 @@ void SNodePrefabContextMenu::Construct(const FArguments& InArgs, FPointerEvent i
 		]
 	);
 
-	//scrollBox->SetScrollBarRightClickDragAllowed(true);
-
 	graphEditor = inGraphEditor;
 	mouseEvent = inMouseEvent;
 
-	// Build TreeStructure
-	treeRoot = MakeShareable(new FTreeNode(TEXT("")));
+	// Clear Category expansion states if the user does not want them.
+	if (!UNodePrefabSettings::Get()->bKeepCategoriesExpanded)
+	{
+		UNodePrefabSettings::Get()->expandedCategories.Empty();
+	}
 
+	// Build TreeStructure
+	treeRoot = MakeShareable(new FTreeNode(TSharedPtr<FTreeNode>(nullptr), TEXT("")));
 	FNodePrefabLibrary::GetNodePrefabsForGraph(graphEditor, nodePrefabsFiltered);
 	for (UNodePrefab* prefab : nodePrefabsFiltered)
 	{
@@ -94,20 +97,38 @@ void SNodePrefabContextMenu::Construct(const FArguments& InArgs, FPointerEvent i
 
 	if (nodePrefabsFiltered.Num() > 0)
 	{
+		TSharedPtr<STreeView<TreeType>> treeView;
+
 		verticalBox->AddSlot()
 			[
 				SNew(SBox)
 				.MaxDesiredHeight(450)
 			[
-				
-					SNew(STreeView<TreeType>)
-					.ItemHeight(24)
+
+				SAssignNew(treeView, STreeView<TreeType>)
+				.ItemHeight(24)
 			.TreeItemsSource(&(treeRoot->children))
 			.OnGenerateRow_Raw(this, &SNodePrefabContextMenu::OnTreeViewGenerateRow)
 			.OnGetChildren_Raw(this, &SNodePrefabContextMenu::OnTreeViewGetChildren)
-				
+			.OnExpansionChanged_Raw(this, &SNodePrefabContextMenu::OnTreeViewExpansionChanged)
 			]
 			];
+
+		treeView->SetOnEntryInitialized(SListView<TreeType>::FOnEntryInitialized::CreateLambda(
+			[this](TreeType item, const TSharedRef<ITableRow>&row)
+		{
+			// At this point the row widget is fully setup and registered.
+		
+			// Handle Category expansion
+			UNodePrefabSettings* settings = UNodePrefabSettings::Get();
+			if (settings->bKeepCategoriesExpanded
+				&& settings->expandedCategories.Contains(item->GetCategoryFull())
+				&& !row->IsItemExpanded())
+			{
+				row->ToggleExpansion();
+			}
+		
+		}));
 	}
 	else
 	{
@@ -166,7 +187,7 @@ TSharedRef<ITableRow> SNodePrefabContextMenu::OnTreeViewGenerateRow(TreeType ite
 	TSharedPtr<STableRow<TreeType>> row;
 	SAssignNew(row, STableRow<TreeType>, OwnerTable)
 		.ShowSelection(false);
-
+	
 	if (item->prefab)
 	{
 		// Create TableRow for the prefab
@@ -218,35 +239,54 @@ TSharedRef<ITableRow> SNodePrefabContextMenu::OnTreeViewGenerateRow(TreeType ite
 	}
 	else
 	{
+		// Create TableRow for category
 		FSlateFontInfo categoryFont = FCoreStyle::Get().GetFontStyle("NormalText");
 		categoryFont.Size = 11;
 
-		// Create TableRow for category
 		row->SetContent(
 			SNew(STextBlock)
-			.Text(FText::FromString(item->name))
+			.Text(FText::FromString(item->categoryPart))
 			.Font(categoryFont)
 		);
+
+		// Can't handle expansion state of the category widget yet, see SetOnEntryInitialized
 	}
 
 	return row.ToSharedRef();
+}
+
+void SNodePrefabContextMenu::OnTreeViewExpansionChanged(TreeType item, bool bExpanded)
+{
+	UNodePrefabSettings* settings = UNodePrefabSettings::Get();
+	if (bExpanded)
+	{
+		if (settings->bKeepCategoriesExpanded && !item->categoryPart.IsEmpty())
+		{
+			settings->expandedCategories.AddUnique(item->GetCategoryFull());
+		}
+	}
+	else
+	{
+		settings->expandedCategories.RemoveSingleSwap(item->GetCategoryFull());
+	}
 }
 
 void SNodePrefabContextMenu::FTreeNode::AddPrefab_RootOnly(UNodePrefab* inPrefab)
 {
 	if (!inPrefab) return;
 
-	TArray<FString> categories;
+	TArray<FString> categoriesSplit;
 	if (!inPrefab->category.IsEmpty())
 	{
-		inPrefab->category.ParseIntoArray(categories, TEXT("|"));
+		inPrefab->category.ParseIntoArray(categoriesSplit, TEXT("|"));
 	}
 
+	// Look for the category node to place our NodePrefab in
 	TSharedPtr<FTreeNode> currentNode = AsShared();
-	for (const FString& category : categories)
+	for (const FString& categoryPartInternal : categoriesSplit)
 	{
-		TSharedPtr<FTreeNode>* found = currentNode->children.FindByPredicate([&category](const TSharedPtr<FTreeNode>& child) {
-			return child->name == category;
+		TSharedPtr<FTreeNode>* found = currentNode->children.FindByPredicate([&categoryPartInternal](const TSharedPtr<FTreeNode>& child) {
+			return child->categoryPart == categoryPartInternal;
 		}
 		);
 
@@ -256,11 +296,12 @@ void SNodePrefabContextMenu::FTreeNode::AddPrefab_RootOnly(UNodePrefab* inPrefab
 		}
 		else
 		{
-			currentNode = currentNode->children.Add_GetRef(MakeShareable(new FTreeNode(category)));
+			currentNode = currentNode->children.Add_GetRef(MakeShareable(new FTreeNode(AsShared(), categoryPartInternal)));
 		}
 	}
 
-	currentNode->children.Add(MakeShareable(new FTreeNode(inPrefab)));
+	// Place the NodePrefab
+	currentNode->children.Add(MakeShareable(new FTreeNode(AsShared(), inPrefab)));
 }
 
 void SNodePrefabContextMenu::FTreeNode::SortTree_RootOnly()
@@ -281,11 +322,32 @@ void SNodePrefabContextMenu::FTreeNode::SortTree_RootOnly()
 			return true;
 		}
 		
-		return a->name < b->name;
+		return a->categoryPart < b->categoryPart;
 	});
 
 	for (TSharedPtr<FTreeNode> child : children)
 	{
 		child->SortTree_RootOnly();
+	}
+}
+
+FString SNodePrefabContextMenu::FTreeNode::GetCategoryFull()
+{
+	if (parent.IsValid())
+	{
+		FString category = parent->GetCategoryFull();
+
+		if (!category.IsEmpty())
+		{
+			category.Append(TEXT("|"));
+		}
+
+		category.Append(categoryPart);
+
+		return category;
+	}
+	else
+	{
+		return FString();
 	}
 }

@@ -16,7 +16,7 @@ public:
 
 	virtual uint32 GetCategories() override
 	{
-		return EAssetTypeCategories::Blueprint;
+		return EAssetTypeCategories::Misc;
 	}
 
 	virtual FColor GetTypeColor() const override

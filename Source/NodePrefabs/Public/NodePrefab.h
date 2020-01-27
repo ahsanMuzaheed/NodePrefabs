@@ -31,7 +31,7 @@ public:
 	UPROPERTY()
 	FString prefab;
 
-	FString GetListName()
+	FString GetListName() const
 	{
 		return displayName.IsEmpty() ? GetName() : displayName;
 	}
@@ -42,5 +42,5 @@ public:
 		return true;
 	}
 
-	bool PasteIntoGraph(TSharedPtr<SGraphEditor> graphEditor);
+	bool PasteIntoGraph(TSharedPtr<SGraphEditor> graphEditor) const;
 };

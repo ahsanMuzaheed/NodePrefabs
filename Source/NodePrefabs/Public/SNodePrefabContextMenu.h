@@ -14,22 +14,34 @@ class SScrollBox;
  */
 class NODEPREFABS_API SNodePrefabContextMenu : public SBorder, public FGCObject
 {
-	// Node to create a category-tree from our prefabs.
-	// A node can either have a name (category) or a prefab
+	// Node to create a category-tree from for our prefabs.
+	// A node can either have a category or a prefab
 	struct FTreeNode : public TSharedFromThis<FTreeNode>
 	{
-		FTreeNode(const FString& inName) : name(inName), prefab(nullptr)
+		FTreeNode(TSharedPtr<FTreeNode> inParent, const FString& inCategoryPart)
+			: categoryPart(inCategoryPart), prefab(nullptr), parent(inParent)
 		{}
 
-		FTreeNode(UNodePrefab* inPrefab) : prefab(inPrefab)
+		FTreeNode(TSharedPtr<FTreeNode> inParent, UNodePrefab* inPrefab)
+			: prefab(inPrefab), parent(inParent)
 		{}
 
-		FString name;
+		// Either the categories are set
+		const FString categoryPart; // Last category part of "category"
+		// or the prefab
 		UNodePrefab* prefab;
+
+		TSharedPtr<FTreeNode> parent;
 		TArray<TSharedPtr<FTreeNode>> children;
 
 		void AddPrefab_RootOnly(UNodePrefab* inPrefab);
 		void SortTree_RootOnly();
+
+		/**
+		 * Read through the parent chain to build the full category with '|' separator
+		 * up to and including this node.
+		 */
+		FString GetCategoryFull();
 	};
 
 	typedef TSharedPtr<FTreeNode> TreeType;
@@ -51,7 +63,7 @@ public:
 	{
 		childItems = inItem->children;
 	}
-
+	void OnTreeViewExpansionChanged(TreeType item, bool bExpanded);
 
 protected:
 	FReply OnPrefabButtonClicked(UNodePrefab*);
