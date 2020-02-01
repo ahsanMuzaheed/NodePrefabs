@@ -17,6 +17,8 @@ class NODEPREFABS_API UNodePrefab : public UObject
 	GENERATED_BODY()
 public:
 
+	UNodePrefab();
+
 	// (Optional) Display name in the context menu. If not set, the asset name is taken
 	UPROPERTY(EditDefaultsOnly, Category = "Default")
 	FString displayName;
@@ -26,7 +28,7 @@ public:
 	FString category;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Default")
-	FLinearColor color = FLinearColor::White;
+	FLinearColor color;
 
 	UPROPERTY()
 	FString prefab;

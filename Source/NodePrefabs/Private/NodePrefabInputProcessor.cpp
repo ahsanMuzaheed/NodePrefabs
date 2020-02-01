@@ -9,6 +9,7 @@
 #include "NodePrefabActions.h"
 #include "Framework/Commands/UICommandList.h"
 #include "SGraphPanel.h"
+#include "SNodePrefabActionMenu.h"
 
 bool FNodePrefabInputProcessor::HandleMouseButtonUpEvent(FSlateApplication& SlateApp, const FPointerEvent& MouseEvent)
 {
@@ -45,6 +46,8 @@ bool FNodePrefabInputProcessor::HandleMouseButtonUpEvent(FSlateApplication& Slat
 			MouseEvent.GetScreenSpacePosition(),
 			FPopupTransitionEffect(FPopupTransitionEffect::ContextMenu)
 		);
+
+		FSlateApplication::Get().SetUserFocus(0, widget->GetActionMenu()->GetFilterTextBox());
 
 		return true;
 	}

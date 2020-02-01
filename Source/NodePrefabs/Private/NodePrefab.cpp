@@ -3,6 +3,12 @@
 
 #include "NodePrefab.h"
 #include "NodePrefabLibrary.h"
+#include "NodePrefabSettings.h"
+
+UNodePrefab::UNodePrefab()
+{
+	color = UNodePrefabSettings::Get()->DefaultNodePrefabColor;
+}
 
 bool UNodePrefab::PasteIntoGraph(TSharedPtr<SGraphEditor> graphEditor) const
 {

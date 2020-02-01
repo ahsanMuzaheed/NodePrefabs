@@ -17,6 +17,9 @@ public:
 	UNodePrefabSettings();
 	~UNodePrefabSettings();
 
+	UPROPERTY(config, EditAnywhere, Category = "NodePrefab")
+	FLinearColor DefaultNodePrefabColor;
+
 	/**
 	 * Only Assets defined by include Paths are part of the Graph Menu
 	 */
@@ -42,14 +45,16 @@ public:
 	TArray<FDirectoryPath> PathToExcludeRecursive;
 
 	/**
-	 * Check to keep the expanded state of categories
+	 * Check to show to show the search bar in the GraphMenu
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Graph Menu")
-	bool bKeepCategoriesExpanded = false;
+	bool bShowSearchBar = true;
 
-	// List of categories that have been expanded
-	UPROPERTY(config)
-	TArray<FString> expandedCategories;
+#if ENGINE_MAJOR_VERSION >= 4 && ENGINE_MINOR_VERSION >= 25
+#include "KeepExpanded.inl"
+#endif
+
+
 
 	static FName GetContainerName()
 	{

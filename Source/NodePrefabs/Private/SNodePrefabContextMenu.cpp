@@ -12,8 +12,28 @@
 #include "EdGraphNode_Comment.h"
 #include "Kismet2/KismetEditorUtilities.h"
 #include "NodePrefabSettings.h"
+#include "SGraphActionMenu.h"
+#include "SExpanderArrow.h"
+
+#include "UObject/StrongObjectPtr.h"
 
 FLinearColor buttonColor = FLinearColor(0.14902f, 0.14902f, 0.14902f, 1.f);
+
+/** This structure represents a context dependent action, with sufficient information for the schema to perform it. */
+struct FNodePrefabContextMenuAction : public FEdGraphSchemaAction
+{
+	/** Simple type info. */
+	static FName StaticGetTypeId() { static FName Type("FNodePrefabContextMenuAction"); return Type; }
+	virtual FName GetTypeId() const override { return StaticGetTypeId(); }
+
+	FNodePrefabContextMenuAction(UNodePrefab* inNodePrefab) : nodePrefab(inNodePrefab)
+	{
+		UpdateSearchData(FText(), FText()
+			, FText::FromString(nodePrefab->category), FText::FromString(nodePrefab->displayName + nodePrefab->GetName()));
+	}
+
+	TStrongObjectPtr<UNodePrefab> nodePrefab;
+};
 
 void SNodePrefabContextMenu::SpawnPrefab(const FAssetData& assetData)
 {
@@ -45,7 +65,7 @@ void SNodePrefabContextMenu::Construct(const FArguments& InArgs, FPointerEvent i
 		.Padding(5)
 		[
 			SNew(SHorizontalBox)
-			+SHorizontalBox::Slot()
+			+ SHorizontalBox::Slot()
 		.FillWidth(1.0)
 		.HAlign(HAlign_Fill)
 		[
@@ -61,7 +81,7 @@ void SNodePrefabContextMenu::Construct(const FArguments& InArgs, FPointerEvent i
 		[
 			SNew(SButton)
 			.ButtonColorAndOpacity(buttonColor)
-			.OnClicked_Lambda([]() {
+		.OnClicked_Lambda([]() {
 		UNodePrefabSettings* settings = UNodePrefabSettings::Get();
 		FModuleManager::LoadModuleChecked<ISettingsModule>("Settings").ShowViewer(settings->GetContainerName()
 			, settings->GetCategoryName(), settings->GetSectionName()); // Copied from FSettingsMenu::OpenSettings
@@ -80,75 +100,34 @@ void SNodePrefabContextMenu::Construct(const FArguments& InArgs, FPointerEvent i
 	graphEditor = inGraphEditor;
 	mouseEvent = inMouseEvent;
 
+#if ENGINE_MAJOR_VERSION >= 4 && ENGINE_MINOR_VERSION >= 25
 	// Clear Category expansion states if the user does not want them.
 	if (!UNodePrefabSettings::Get()->bKeepCategoriesExpanded)
 	{
 		UNodePrefabSettings::Get()->expandedCategories.Empty();
 	}
+#endif
+	
+	verticalBox->AddSlot()
+		[
+			SNew(SBox)
+			.MaxDesiredHeight(450)
+		[
+			SAssignNew(graphActionMenu, SGraphActionMenu)
+			.ShowFilterTextBox(UNodePrefabSettings::Get()->bShowSearchBar)
+		.OnActionSelected(this, &SNodePrefabContextMenu::OnGraphActionMenu_OnActionSelected)
+		.OnCollectAllActions(this, &SNodePrefabContextMenu::OnGraphActionMenu_CollectAllActions)
+		.OnCreateWidgetForAction(SGraphActionMenu::FOnCreateWidgetForAction::CreateSP(this, &SNodePrefabContextMenu::OnGraphActionMenu_CreateWidgetForAction))
+		// Need a custom expander cause SGraphActionMenu messes up the indent level with the default extender
+		.OnCreateCustomRowExpander_Lambda([](FCustomExpanderData const& expanderData) {return SNew(SExpanderArrow, expanderData.TableRow); })
+#if ENGINE_MAJOR_VERSION >= 4 && ENGINE_MINOR_VERSION >= 25
+		.OnExpansionChanged(this, &SNodePrefabContextMenu::OnGraphActionMenu_ExpansionChanged)
+		.OnEntryInitialised(this, &SNodePrefabContextMenu::OnGraphActionMenu_OnEntryInitialized)
+#endif
+		]
+		];
 
-	// Build TreeStructure
-	treeRoot = MakeShareable(new FTreeNode(TSharedPtr<FTreeNode>(nullptr), TEXT("")));
-	FNodePrefabLibrary::GetNodePrefabsForGraph(graphEditor, nodePrefabsFiltered);
-	for (UNodePrefab* prefab : nodePrefabsFiltered)
-	{
-		treeRoot->AddPrefab_RootOnly(prefab);
-	}
-	treeRoot->SortTree_RootOnly();
-
-	if (nodePrefabsFiltered.Num() > 0)
-	{
-		TSharedPtr<STreeView<TreeType>> treeView;
-
-		verticalBox->AddSlot()
-			[
-				SNew(SBox)
-				.MaxDesiredHeight(450)
-			[
-
-				SAssignNew(treeView, STreeView<TreeType>)
-				.ItemHeight(24)
-			.TreeItemsSource(&(treeRoot->children))
-			.OnGenerateRow_Raw(this, &SNodePrefabContextMenu::OnTreeViewGenerateRow)
-			.OnGetChildren_Raw(this, &SNodePrefabContextMenu::OnTreeViewGetChildren)
-			.OnExpansionChanged_Raw(this, &SNodePrefabContextMenu::OnTreeViewExpansionChanged)
-			]
-			];
-
-		treeView->SetOnEntryInitialized(SListView<TreeType>::FOnEntryInitialized::CreateLambda(
-			[this](TreeType item, const TSharedRef<ITableRow>&row)
-		{
-			// At this point the row widget is fully setup and registered.
-		
-			// Handle Category expansion
-			UNodePrefabSettings* settings = UNodePrefabSettings::Get();
-			if (settings->bKeepCategoriesExpanded
-				&& settings->expandedCategories.Contains(item->GetCategoryFull())
-				&& !row->IsItemExpanded())
-			{
-				row->ToggleExpansion();
-			}
-		
-		}));
-	}
-	else
-	{
-		verticalBox->AddSlot()
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(FString(TEXT("No NodePrefab Assets created for this graph type\nor the include/exclude configuration is wrong."))))
-			];
-	}
-
-}
-
-void SNodePrefabContextMenu::AddReferencedObjects(FReferenceCollector& Collector)
-{
-	Collector.AddReferencedObjects(nodePrefabsFiltered);
-}
-
-FString SNodePrefabContextMenu::GetReferencerName() const
-{
-	return TEXT("SNodePrefabContextMenu");
+	// Focus to the search bar of FGraphActionMenu is set from Outside, does not work in Constructor
 }
 
 FReply SNodePrefabContextMenu::OnPrefabButtonClicked(UNodePrefab* prefab)
@@ -182,172 +161,131 @@ FReply SNodePrefabContextMenu::OnPrefabButtonClicked(UNodePrefab* prefab)
 	return FReply::Handled();
 }
 
-TSharedRef<ITableRow> SNodePrefabContextMenu::OnTreeViewGenerateRow(TreeType item, const TSharedRef<STableViewBase>& OwnerTable)
-{
-	TSharedPtr<STableRow<TreeType>> row;
-	SAssignNew(row, STableRow<TreeType>, OwnerTable)
-		.ShowSelection(false);
-	
-	if (item->prefab)
-	{
-		// Create TableRow for the prefab
-		row->SetContent(
-			SNew(SHorizontalBox)
-			// Color indicator
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			[
-				SNew(SBox)
-				.WidthOverride(9)
-			[
-				SNew(SBorder)
-				.BorderImage(FEditorStyle::GetBrush("AssetThumbnail.Border"))
-			.BorderBackgroundColor(item->prefab->color)
-			]
-			]
-		// Button to paste NodePrefab
-		+ SHorizontalBox::Slot()
-			.FillWidth(1.f)
-			[
-				SNew(SButton)
-				.ButtonColorAndOpacity(buttonColor)
-			.OnClicked(this, &SNodePrefabContextMenu::OnPrefabButtonClicked, item->prefab)
-			[
-				SNew(STextBlock)
-				.ColorAndOpacity(FEditorStyle::GetColor("ForegroundColor"))
-			//.Font(FEditorStyle::GetFontStyle("FontAwesome.14"))
-			.Text(FText::FromString(item->prefab->GetListName()))
-			]
-			]
-		// Button for editing the NodePrefab
-		+ SHorizontalBox::Slot()
-			.AutoWidth()
-			[
-				SNew(SButton)
-				.ButtonColorAndOpacity(buttonColor)
-			.ToolTipText(NSLOCTEXT("NodePrefabs", "NodePrefabs.ContextWidget.EditButton.Tooltip", "Open the NodePrefab to Edit"))
-			.OnClicked_Lambda([item]() {
-			FAssetEditorManager::Get().OpenEditorForAsset(item->prefab);
-			return FReply::Handled();
-		})
-			[
-				SNew(SImage)
-				.Image(FEditorStyle::GetBrush("ToolBar.Icon"))
-			]
-			]
-		);
-	}
-	else
-	{
-		// Create TableRow for category
-		FSlateFontInfo categoryFont = FCoreStyle::Get().GetFontStyle("NormalText");
-		categoryFont.Size = 11;
-
-		row->SetContent(
-			SNew(STextBlock)
-			.Text(FText::FromString(item->categoryPart))
-			.Font(categoryFont)
-		);
-
-		// Can't handle expansion state of the category widget yet, see SetOnEntryInitialized
-	}
-
-	return row.ToSharedRef();
-}
-
-void SNodePrefabContextMenu::OnTreeViewExpansionChanged(TreeType item, bool bExpanded)
+#if ENGINE_MAJOR_VERSION >= 4 && ENGINE_MINOR_VERSION >= 25
+void SNodePrefabContextMenu::OnGraphActionMenu_ExpansionChanged(TSharedPtr<FGraphActionNode> item, bool bExpanded)
 {
 	UNodePrefabSettings* settings = UNodePrefabSettings::Get();
 	if (bExpanded)
 	{
-		if (settings->bKeepCategoriesExpanded && !item->categoryPart.IsEmpty())
+		if (settings->bKeepCategoriesExpanded && item->IsCategoryNode())
 		{
-			settings->expandedCategories.AddUnique(item->GetCategoryFull());
+			settings->expandedCategories.AddUnique(item->GetCategoryPath().ToString());
 		}
 	}
 	else
 	{
-		settings->expandedCategories.RemoveSingleSwap(item->GetCategoryFull());
+		settings->expandedCategories.RemoveSingleSwap(item->GetCategoryPath().ToString());
 	}
 }
 
-void SNodePrefabContextMenu::FTreeNode::AddPrefab_RootOnly(UNodePrefab* inPrefab)
+void SNodePrefabContextMenu::OnGraphActionMenu_OnEntryInitialized(TSharedPtr<FGraphActionNode> item, bool bExpanded)
 {
-	if (!inPrefab) return;
-
-	TArray<FString> categoriesSplit;
-	if (!inPrefab->category.IsEmpty())
+	UNodePrefabSettings* settings = UNodePrefabSettings::Get();
+	if (item->IsCategoryNode())
 	{
-		inPrefab->category.ParseIntoArray(categoriesSplit, TEXT("|"));
-	}
-
-	// Look for the category node to place our NodePrefab in
-	TSharedPtr<FTreeNode> currentNode = AsShared();
-	for (const FString& categoryPartInternal : categoriesSplit)
-	{
-		TSharedPtr<FTreeNode>* found = currentNode->children.FindByPredicate([&categoryPartInternal](const TSharedPtr<FTreeNode>& child) {
-			return child->categoryPart == categoryPartInternal;
-		}
-		);
-
-		if (found)
-		{
-			currentNode = *found;
-		}
-		else
-		{
-			currentNode = currentNode->children.Add_GetRef(MakeShareable(new FTreeNode(AsShared(), categoryPartInternal)));
-		}
-	}
-
-	// Place the NodePrefab
-	currentNode->children.Add(MakeShareable(new FTreeNode(AsShared(), inPrefab)));
-}
-
-void SNodePrefabContextMenu::FTreeNode::SortTree_RootOnly()
-{
-	children.Sort([](const TSharedPtr<FTreeNode>& a, const TSharedPtr<FTreeNode>& b) {
-		if (a->prefab && b->prefab)
-		{
-			return a->prefab->GetListName() < b->prefab->GetListName();
-		}
-
-		// Keep all prefabs below the categories
-		if (a->prefab)
-		{
-			return false;
-		}
-		else if (b->prefab)
-		{
-			return true;
-		}
-		
-		return a->categoryPart < b->categoryPart;
-	});
-
-	for (TSharedPtr<FTreeNode> child : children)
-	{
-		child->SortTree_RootOnly();
+		TODO Restore expansion state
 	}
 }
 
-FString SNodePrefabContextMenu::FTreeNode::GetCategoryFull()
+#endif
+
+void SNodePrefabContextMenu::OnGraphActionMenu_CollectAllActions(FGraphActionListBuilderBase& OutAllActions)
 {
-	if (parent.IsValid())
+	TArray<UNodePrefab*> nodePrefabsFiltered;
+	FNodePrefabLibrary::GetNodePrefabsForGraph(graphEditor, nodePrefabsFiltered);
+	if (nodePrefabsFiltered.Num() > 0)
 	{
-		FString category = parent->GetCategoryFull();
-
-		if (!category.IsEmpty())
+		for (UNodePrefab* prefab : nodePrefabsFiltered)
 		{
-			category.Append(TEXT("|"));
+			OutAllActions.AddAction(MakeShareable(new FNodePrefabContextMenuAction(prefab)));
 		}
-
-		category.Append(categoryPart);
-
-		return category;
 	}
 	else
 	{
-		return FString();
+		// Dummy to display a help text why no NodePrefabs are displayed
+		OutAllActions.AddAction(MakeShareable(new FEdGraphSchemaAction_Dummy(
+			FText(), FText(), FText(), 0
+		)));
+	}
+}
+
+TSharedRef<SWidget> SNodePrefabContextMenu::OnGraphActionMenu_CreateWidgetForAction(FCreateWidgetForActionData* const InCreateData)
+{
+	TSharedPtr<SHorizontalBox> widget;
+	if (InCreateData->Action->GetTypeId() == FNodePrefabContextMenuAction::StaticGetTypeId())
+	{
+		TSharedPtr<FNodePrefabContextMenuAction> prefabAction = StaticCastSharedPtr<FNodePrefabContextMenuAction>(InCreateData->Action);
+		if (prefabAction->nodePrefab)
+		{
+			// Create TableRow for the prefab
+			SAssignNew(widget, SHorizontalBox)
+				// Color indicator
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(SBox)
+					.WidthOverride(9)
+				[
+					SNew(SBorder)
+					.BorderImage(FEditorStyle::GetBrush("AssetThumbnail.Border"))
+				.BorderBackgroundColor(prefabAction->nodePrefab->color)
+				]
+				]
+			// Button to paste NodePrefab
+			+ SHorizontalBox::Slot()
+				.FillWidth(1.f)
+				[
+					SNew(SButton)
+					.ButtonColorAndOpacity(buttonColor)
+				.OnClicked(this, &SNodePrefabContextMenu::OnPrefabButtonClicked, prefabAction->nodePrefab.Get())
+				[
+					SNew(STextBlock)
+					.ColorAndOpacity(FEditorStyle::GetColor("ForegroundColor"))
+				//.Font(FEditorStyle::GetFontStyle("FontAwesome.14"))
+				.Text(FText::FromString(prefabAction->nodePrefab->GetListName()))
+				]
+				]
+			// Button for editing the NodePrefab
+			+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(SButton)
+					.ButtonColorAndOpacity(buttonColor)
+				.ToolTipText(NSLOCTEXT("NodePrefabs", "NodePrefabs.ContextWidget.EditButton.Tooltip", "Open the NodePrefab to Edit"))
+				.OnClicked_Lambda([prefabAction]() {
+				FAssetEditorManager::Get().OpenEditorForAsset(prefabAction->nodePrefab.Get());
+				return FReply::Handled();
+			})
+				[
+					SNew(SImage)
+					.Image(FEditorStyle::GetBrush("ToolBar.Icon"))
+				]
+				];
+
+		}
+	}
+	else if (InCreateData->Action->GetTypeId() == FEdGraphSchemaAction_Dummy::StaticGetTypeId())
+	{
+		SAssignNew(widget, SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(FString(TEXT("No NodePrefab Assets created for this graph type\nor the include/exclude configuration is wrong."))))
+			];
+	}
+	return widget.ToSharedRef();
+}
+
+void SNodePrefabContextMenu::OnGraphActionMenu_OnActionSelected(const TArray< TSharedPtr<FEdGraphSchemaAction> >& SelectedAction, ESelectInfo::Type InSelectionType)
+{
+	if (InSelectionType == ESelectInfo::OnKeyPress && SelectedAction.IsValidIndex(0))
+	{
+		if( SelectedAction[0]->GetTypeId() == FNodePrefabContextMenuAction::StaticGetTypeId())
+		{	
+			TSharedPtr<FNodePrefabContextMenuAction> prefabAction = StaticCastSharedPtr<FNodePrefabContextMenuAction>(SelectedAction[0]);
+			
+			// Just use the button function, as we want to do exactly that
+			OnPrefabButtonClicked(prefabAction->nodePrefab.Get());
+		}
 	}
 }
